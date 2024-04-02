@@ -54,7 +54,11 @@ BEGIN
 	--* FROM ' + @DBNAME + '..[' + @TABLENAME + '] '
 
      IF @TOP <> '' BEGIN
-          SET @Sql = @Sql + ' TOP (' + @TOP + ')' 
+          SET @Sql = @Sql + ' DISTINCT ' 
+     END
+
+     IF @TOP <> '' BEGIN
+          SET @Sql = @Sql + ' TOP (' + @TOP + ') ' 
      END
 
 	 SET @Sql = @Sql + ' * FROM ' + @DBNAME + '..[' + @TABLENAME + '] '
