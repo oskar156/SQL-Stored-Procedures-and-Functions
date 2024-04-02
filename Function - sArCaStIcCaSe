@@ -1,6 +1,6 @@
 ﻿/* Stored Procedure - GRP
 
--cases a column in sArCaStIcAlLy
+-cases a column sArCaStIcAlLy
 
 -1st parameter, tablename is required
 -2nd parameter, cols is required
