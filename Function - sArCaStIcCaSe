@@ -1,0 +1,43 @@
+﻿/* Stored Procedure - GRP
+
+-cases a column in sArCaStIcAlLy
+
+-1st parameter, tablename is required
+-2nd parameter, cols is required
+	-these are the columns to group by
+-3rd parameter, order is optional
+	-these are the columns to order by
+	-if left blank, it will default to the columns to group by (COLS)
+-4th parameter, dbname is optional 
+	-if left blank it will use the DB currently in use
+*/
+
+USE [TEMP_OK]
+GO
+/****** Object:  UserDefinedFunction [dbo].[ProperCase]    Script Date: 4/2/2024 11:15:17 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE function [dbo].[sArCaStIcCaSe](@Text as varchar(8000))
+returns varchar(8000)
+as
+begin
+   dEcLaRe @Reset int;
+   dEcLaRe @Ret varchar(8000);
+   dEcLaRe @i int;
+   dEcLaRe @c char(1);
+
+   select @Reset = 0, @i=1, @Ret = '';
+
+   while (@i <= len(@Text))
+       select 
+	       @c= substring(@Text,@i,1)
+	       ,@Ret = @Ret + case when @Reset=0 then LOWER(@c) else UPPER(@c) END
+	       ,@Reset = CASE WHEN @c like '[a-zA-Z]' THEN (CASE WHEN @Reset=0 THEN 1 ELSE 0 END) END
+	       ,@i = @i +1
+
+   return @Ret
+end
+
+
