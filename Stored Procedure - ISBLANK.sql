@@ -43,12 +43,12 @@ BEGIN
 
     --Get count OF BLANKS
     SET @Sql = N' SELECT COUNT(*) AS [COUNT] FROM [' + @DBNAME + ']..[' + @TABLENAME + '] '
-    SET @Sql = @Sql + ' WHERE ' + @COL + ' IS NULL OR ' + @COL + '='''' '
+    SET @Sql = @Sql + ' WHERE [' + @COL + ' IS NULL OR ' + @COL + '] ='''' '
 	EXECUTE sp_executesql @Sql
 
     --SEE BLANKS
     SET @Sql = N' SELECT * FROM [' + @DBNAME + ']..[' + @TABLENAME + '] '
-    SET @Sql = @Sql + ' WHERE ' + @COL + ' IS NULL OR ' + @COL + '='''' '
+    SET @Sql = @Sql + ' WHERE [' + @COL + '] IS NULL OR [' + @COL + '] ='''' '
 	EXECUTE sp_executesql @Sql
 
 END
