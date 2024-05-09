@@ -1,0 +1,74 @@
+﻿/* Function - PhoneClean
+
+-cleans a column of raw phone numbers (numeric only, can't start with a 1, only 10 digits, blanks out un-wanted phone numbers)
+
+-1st parameter, is a column of raw phone numbers
+*/
+
+USE [TEMP_OK]
+GO
+/****** Object:  UserDefinedFunction [dbo].[PhoneClean]    Script Date: 5/9/2024 9:42:36 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date, ,>
+-- Description:	<Description, ,>
+-- =============================================
+CREATE FUNCTION [dbo].[PhoneClean]
+
+	-- Add the parameters for the function here
+	(@phoneRaw as varchar(8000))
+
+RETURNS VARCHAR(10)
+AS
+BEGIN
+
+	DECLARE @clean AS VARCHAR(255)
+	DECLARE @currentChar AS CHAR
+	DECLARE @i AS INT
+
+	--Iterating through each character of @phoneRaw and only assigning that character to @clean if it's numeric
+	SET @clean = ''
+	SET @i = 0
+	WHILE @i <= LEN(@phoneRaw)
+	BEGIN
+
+	    SET @currentChar = substring(@phoneRaw, @i, 1)
+
+		IF @currentChar LIKE '[0-9]'
+		    SET @clean = @clean + @currentChar
+
+		SET @i = @i + 1
+
+	END
+	
+	--If @clean starts with a 1, remove the 1
+    IF LEFT(@clean, 1) = '1'
+	    SET @clean = RIGHT(@clean, LEN(@clean) - 1)
+
+		
+	--Only keep the left 10 digits of @clean
+    SET @clean = LEFT(@clean, 10)
+
+	--Blank out @clean if it's a known number we don't want to use.
+    IF @clean LIKE '%0000000%'
+	   OR @clean LIKE '%1111111%'
+	   OR @clean LIKE '%2222222%'
+	   OR @clean LIKE '%3333333%'
+	   OR @clean LIKE '%4444444%'
+	   OR @clean LIKE '%5555555%'
+	   OR @clean LIKE '%6666666%'
+	   OR @clean LIKE '%7777777%'
+	   OR @clean LIKE '%8888888%'
+	   OR @clean LIKE '%9999999%'
+	   OR @clean LIKE '1%'
+	   OR @clean LIKE '911%'
+	   OR @clean LIKE '999%'
+        SET @clean = ''
+		
+	RETURN  @clean
+
+END
