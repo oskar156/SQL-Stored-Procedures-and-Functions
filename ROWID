@@ -1,0 +1,70 @@
+/* Stored Procedure - SMRY
+	
+-creates a ROWID column for column(s)
+-ex: if there are 10 records with a valu of AL for STATE, then the records will be numbered 1 through 10 in a new ROWID column
+
+-1st parameter, tablename is required
+-2nd parameter, cols is required
+	-can enter multiple columns (comma-separated)
+-3rd parameter, count is optional 
+	-if left blank the output column will be named 'ROWID'
+  -if filled in, then the column will be named 'ROWID' + @SUFFIX
+-4th parameter, dbname is optional 
+	-if left blank it will use the DB currently in use
+*/
+
+USE [TEMP_OK]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+ALTER PROCEDURE [dbo].[ROWID]
+	-- Add the parameters for the stored procedure here
+	@TABLENAME VARCHAR(255)
+	,@COLS VARCHAR(255)
+	,@SUFFIX VARCHAR(255)=''
+	,@DBNAME VARCHAR(255)=''
+AS
+BEGIN
+
+    IF @DBNAME IS NULL OR @DBNAME = '' BEGIN
+        SET @DBNAME = DB_NAME()
+    END
+
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	--SELECT <@Param1, sysname, @p1>, <@Param2, sysname, @p2>
+    DECLARE @Sql NVARCHAR(4000);
+	
+    --add row id
+    SET @Sql = N' ALTER TABLE [' + @DBNAME + ']..[' + @TABLENAME + '] ADD [ROWID' + @SUFFIX + '] BIGINT '
+    EXECUTE sp_executesql @Sql
+
+    --add TEMP unique id
+    SET @Sql = N' ALTER TABLE [' + @DBNAME + ']..[' + @TABLENAME + '] ADD __temp_unique_id__ BIGINT IDENTITY '
+    EXECUTE sp_executesql @Sql
+
+    --update
+    SET @Sql =       N' UPDATE A '
+    SET @Sql = @Sql + ' SET A.[ROWID' + @SUFFIX + '] = B.__temp_row_id__ '
+    SET @Sql = @Sql + ' FROM [' + @DBNAME + ']..[' + @TABLENAME + '] AS A, ( '
+    SET @Sql = @Sql + '     SELECT ' + @COLS + ', __temp_unique_id__, row_number() over (partition by ' + @COLS + ' order by __temp_unique_id__) as __temp_row_id__ '
+    SET @Sql = @Sql + '     FROM [' + @DBNAME + ']..[' + @TABLENAME + ']  '
+    SET @Sql = @Sql + ' ) AS B '
+    SET @Sql = @Sql + ' WHERE A.__temp_unique_id__=B.__temp_unique_id__ '
+    EXECUTE sp_executesql @Sql
+	
+    --DROP TEMP unique id
+    SET @Sql = N' ALTER TABLE [' + @DBNAME + ']..[' + @TABLENAME + '] DROP COLUMN __temp_unique_id__ '
+    EXECUTE sp_executesql @Sql
+
+END
