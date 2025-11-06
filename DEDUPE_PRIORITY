@@ -1,0 +1,61 @@
+USE [TEMP_OK]
+GO
+/****** Object:  StoredProcedure [dbo].[DEDUPE_OK]    Script Date: 11/6/2025 10:45:59 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[DEDUPE_PRIORITY]
+	-- Add the parameters for the stored procedure here
+	@TABLENAME VARCHAR(255)
+	,@COLS_TO_DEDUPE_BY VARCHAR(255)
+	,@COLS_TO_PRIORITIZE_BY VARCHAR(255)
+	,@DBNAME VARCHAR(255)=''
+AS
+BEGIN
+
+    IF @DBNAME IS NULL OR @DBNAME = '' BEGIN
+        SET @DBNAME = DB_NAME()
+    END
+
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+    DECLARE @Sql NVARCHAR(4000);
+
+	IF (EXISTS (SELECT * 
+                 FROM INFORMATION_SCHEMA.TABLES 
+                 WHERE TABLE_NAME = N'' + @TABLENAME + '_OLD'))
+	BEGIN
+	    SET @Sql = N'DROP TABLE [' + @TABLENAME + '_OLD]'
+		EXECUTE sp_executesql @Sql
+	END
+
+	SET @Sql = N' SELECT * INTO [' + @DBNAME + ']..[' + @TABLENAME + '_OLD] FROM [' + @DBNAME + ']..[' + @TABLENAME +'] '
+	EXECUTE sp_executesql @Sql
+
+	SET @Sql = N' DROP TABLE [' + @DBNAME + ']..[' + @TABLENAME +'] '
+	EXECUTE sp_executesql @Sql
+
+	SET @Sql = N'' 
+		+ N' SELECT * '
+		+ N' INTO [' + @DBNAME + ']..[' + @TABLENAME + '] '
+		+ N' FROM ( SELECT *, ROW_NUMBER() OVER ( ' 
+		+ N'         PARTITION BY ' + @COLS_TO_DEDUPE_BY + ' ' 
+		+ N'         ORDER BY ' + @COLS_TO_PRIORITIZE_BY + ' ' 
+		+ N'      ) AS _rn_ ' 
+		+ N'      FROM [' + @DBNAME + ']..[' + @TABLENAME + '_OLD] ) _rn_'
+		+ N' WHERE _rn_._rn_ = 1 '
+		+ N' ORDER BY ' + @COLS_TO_PRIORITIZE_BY + ' ' 
+	EXECUTE sp_executesql @Sql
+
+	SET @Sql = N' ALTER TABLE [' + @DBNAME + ']..[' + @TABLENAME + '] DROP COLUMN _rn_'
+	EXECUTE sp_executesql @Sql
+END
