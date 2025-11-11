@@ -1,6 +1,6 @@
 USE [TEMP_OK]
 GO
-/****** Object:  StoredProcedure [dbo].[DEDUPE_OK]    Script Date: 11/6/2025 10:45:59 AM ******/
+/****** Object:  StoredProcedure [dbo].[DEDUPE_PRIORITY]    Script Date: 11/10/2025 12:50:48 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -10,18 +10,29 @@ GO
 -- Create date: <Create Date,,>
 -- Description:	<Description,,>
 -- =============================================
-CREATE PROCEDURE [dbo].[DEDUPE_PRIORITY]
+ALTER PROCEDURE [dbo].[DEDUPE_PRIORITY]
 	-- Add the parameters for the stored procedure here
 	@TABLENAME VARCHAR(255)
 	,@COLS_TO_DEDUPE_BY VARCHAR(255)
-	,@COLS_TO_PRIORITIZE_BY VARCHAR(255)
+	,@COLS_TO_PRIORITIZE_BY VARCHAR(255)=''
+	,@MAX_PER VARCHAR(20)='1'
+	,@DISPLAY_COUNT_BOOL BIT=1
 	,@DBNAME VARCHAR(255)=''
 AS
 BEGIN
 
+	DECLARE @OLD_COUNT BIGINT = NULL
+	DECLARE @NEW_COUNT BIGINT = NULL
+
     IF @DBNAME IS NULL OR @DBNAME = '' BEGIN
         SET @DBNAME = DB_NAME()
     END
+    IF @COLS_TO_PRIORITIZE_BY IS NULL OR @COLS_TO_PRIORITIZE_BY = '' BEGIN
+        SET @COLS_TO_PRIORITIZE_BY = @COLS_TO_DEDUPE_BY
+    END
+	ELSE BEGIN
+        SET @COLS_TO_PRIORITIZE_BY = @COLS_TO_PRIORITIZE_BY + ' , ' + @COLS_TO_DEDUPE_BY
+	END
 
 	-- SET NOCOUNT ON added to prevent extra result sets from
 	-- interfering with SELECT statements.
@@ -51,11 +62,23 @@ BEGIN
 		+ N'         PARTITION BY ' + @COLS_TO_DEDUPE_BY + ' ' 
 		+ N'         ORDER BY ' + @COLS_TO_PRIORITIZE_BY + ' ' 
 		+ N'      ) AS _rn_ ' 
-		+ N'      FROM [' + @DBNAME + ']..[' + @TABLENAME + '_OLD] ) _rn_'
-		+ N' WHERE _rn_._rn_ = 1 '
-		+ N' ORDER BY ' + @COLS_TO_PRIORITIZE_BY + ' ' 
+		+ N'      FROM [' + @DBNAME + ']..[' + @TABLENAME + '_OLD] ) A'
+		+ N' WHERE A._rn_ <= ' + @MAX_PER + ' '
 	EXECUTE sp_executesql @Sql
 
 	SET @Sql = N' ALTER TABLE [' + @DBNAME + ']..[' + @TABLENAME + '] DROP COLUMN _rn_'
 	EXECUTE sp_executesql @Sql
+
+	IF @DISPLAY_COUNT_BOOL=1 BEGIN
+		SET @Sql = N' 
+			SELECT 
+				COUNT(*) AS ORIGINAL_COUNT
+				, (SELECT COUNT(*) FROM [' + @DBNAME + ']..[' + @TABLENAME + ']) AS DEDUPED_COUNT
+				, ''' + @COLS_TO_DEDUPE_BY + ''' AS [@COLS_TO_DEDUPE_BY]
+				, ''' + @COLS_TO_PRIORITIZE_BY + ''' AS [@COLS_TO_PRIORITIZE_BY]
+				, ''' + @MAX_PER + ''' AS [@MAX_PER]
+			FROM [' + @DBNAME + ']..[' + @TABLENAME + '_OLD] '
+		EXECUTE sp_executesql @Sql
+	END
+
 END
